@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
      
     }
   }
-  printf("Leaving\n");
+  //printf("Leaving\n");
   regfree(&regularexpression);
   free(org);
   nickName = argv[2];
@@ -115,13 +115,13 @@ int main(int argc, char *argv[]){
 	  perror("connecton error .\n");
 	  exit(1);
 	}
-
+  
   char buf[256];
-  char inputMsg[220];
+  char inputMsg[252];
   memset(buf,0,sizeof(buf));
  
 
-// ta emot hello
+  // ta emot hello
   if((recivedValue = recv(clientSocket,buf,sizeof(buf),0)) == -1)
   {
     perror("sendto:");
@@ -183,17 +183,16 @@ int main(int argc, char *argv[]){
     if(FD_ISSET(STDIN,&readfds))
     {
       
-      fgets(inputMsg,255,stdin);
+      fgets(inputMsg,252,stdin);
       
       snprintf(buf,256,"MSG %s",inputMsg);
-      printf("BUF BEFORE SENDING: %s\n",buf);
+      printf("BUF BEFORE SENDING: %s",buf);
       if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
       {
         perror("sendto:");
         exit(1);
       }
       printf("sent: %d bytes\n",recivedValue);
-
     }
   }
   return 0;
