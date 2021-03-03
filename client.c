@@ -11,7 +11,7 @@
 #include <sys/time.h>
 
 
-#define STDIN 0
+
 #define DEBUG
 int main(int argc, char *argv[]){
   /* GET name and port from arguments. */
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]){
   nickName = argv[2];
   
   struct addrinfo hints, *serverinfo, *servaddr;
-  fd_set readfds;
+  fd_set readfds, masterFds;
   int recivedValue;
   int clientSocket;
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]){
 	}
   
   char buf[256];
-  char inputMsg[252];
+  char inputMsg[4096];
   memset(buf,0,sizeof(buf));
  
 
@@ -155,12 +155,16 @@ int main(int argc, char *argv[]){
   {
     printf("ERROR RECIVED: %s",buf);
   }
-  
+   
+  FD_ZERO(&readfds);
+  FD_ZERO(&masterFds);
+  FD_SET(STDIN_FILENO,&masterFds);
+  FD_SET(clientSocket, &masterFds);
+  //uppdatera största nuvarande värde för server!!
   //loopStart
   while(1)
   {
-    FD_SET(STDIN,&readfds);
-    FD_SET(clientSocket, &readfds);
+    readfds = masterFds;
     memset(inputMsg,0,sizeof(inputMsg));
     memset(buf,0,sizeof(buf));
     recivedValue = select(clientSocket +1, &readfds,NULL,NULL,NULL);
@@ -178,21 +182,36 @@ int main(int argc, char *argv[]){
         exit(1);
       }
       printf("Message recived: %s",buf);
+
+      FD_CLR(clientSocket,&readfds);
     }
 
-    if(FD_ISSET(STDIN,&readfds))
+    if(FD_ISSET(STDIN_FILENO,&readfds))
     {
       
-      fgets(inputMsg,252,stdin);
-      
-      snprintf(buf,256,"MSG %s",inputMsg);
-      printf("BUF BEFORE SENDING: %s",buf);
-      if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
+      //koll för att se om över 251 karaktärer då den kan skcika flera gånger ta all data kanske //1000 karaktärer på plats 255 null termination tar bort det efter.
+      // 0/ strlen för att läsa fram till nulltermination. [255] = \0
+
+      //
+      memset(inputMsg,0,sizeof(inputMsg));
+      fgets(inputMsg, 4096, stdin);
+      if(strlen(inputMsg) > 255)
       {
+        printf("to big message try again\n");
+      }
+      else
+      {
+        //skicka
+        sprintf(buf,"MSG %s",inputMsg);
+        printf("BUF BEFORE SENDING: %s\n",buf);
+        if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
+        {
         perror("sendto:");
         exit(1);
+        }
+        printf("sent: %d bytes\n",recivedValue);
       }
-      printf("sent: %d bytes\n",recivedValue);
+      FD_CLR(clientSocket,&readfds);
     }
   }
   return 0;
