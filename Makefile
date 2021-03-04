@@ -22,4 +22,4 @@ server: server.o
 
 
 clean:
-	rm *.o *.a test server client
+	rm *.o test cserverd cchat

@@ -10,7 +10,7 @@
 #include <regex.h>
 #include <arpa/inet.h>
 
-#define DEBUG
+
 
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -70,7 +70,6 @@ int main(int argc, char *argv[]){
   int tempPort;
   
   strcpy(helloMsg,"HELLO 1\n");
-  printf("Hello msg: %s\n", helloMsg);
 
   
 
@@ -207,15 +206,17 @@ int main(int argc, char *argv[]){
           {
             //check NICK and sendback error or ok
             strcpy(nameArr[i],nickName);
+            #ifdef DEBUG            
             printf("Inside Nick check. Nick = %s\n",nameArr[i]);
+            #endif
             char *expression="^[A-Za-z_]+$";
             
             regex_t regularexpression;
             int reti;
-            printf("INNA REGcomp\n");
+            
             
             reti=regcomp(&regularexpression, expression,REG_EXTENDED);
-            printf("Efter REGX\n");
+            
             if(reti)
             {
               fprintf(stderr, "Could not compile regex.\n");
@@ -228,9 +229,9 @@ int main(int argc, char *argv[]){
             
               if(strlen(nickName)<12)
               {
-                printf("INNA REGX\n");
+                
                 reti=regexec(&regularexpression, nickName,matches,&items,0);
-                printf("EFTER REGX\n");
+                
                 if(!reti)
                 {
                   //nick accepted send back ok
@@ -244,7 +245,7 @@ int main(int argc, char *argv[]){
                     printf("Error sending ok for nickname\n");
                   }
                   #ifdef DEBUG
-                  printf("sent ok msg size: %d\n",sendValue);
+                  //printf("sent ok msg size: %d\n",sendValue);
                   #endif
 
                 } 
@@ -277,7 +278,6 @@ int main(int argc, char *argv[]){
                 printf("sent to long nick: %d\n",sendValue);
                 #endif
               }
-
             regfree(&regularexpression);
          
             memset(buf,0,sizeof(buf)); 

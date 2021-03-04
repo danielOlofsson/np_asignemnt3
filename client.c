@@ -199,7 +199,6 @@ int main(int argc, char *argv[]){
     {
       
       memset(inputMsg,0,sizeof(inputMsg));
-      printf("TEST\n");
       fgets(inputMsg, 4096, stdin);
       if(strlen(inputMsg) > 255)
       {
@@ -209,7 +208,9 @@ int main(int argc, char *argv[]){
       {
         //skicka
         sprintf(buf,"MSG %s",inputMsg);
-        printf("BUF BEFORE SENDING: %s\n",buf);
+        #ifdef DEBUG
+        printf("BUF BEFORE SENDING: %s",buf);
+        #endif
         if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
         {
         perror("sendto:");
