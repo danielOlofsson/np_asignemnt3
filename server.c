@@ -8,7 +8,28 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <regex.h>
+#include <arpa/inet.h>
+
 #define DEBUG
+
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+int get_in_port(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return ((struct sockaddr_in*)sa)->sin_port;
+    }
+
+    return ((struct sockaddr_in6*)sa)->sin6_port;
+}
+
 int main(int argc, char *argv[]){
   
   /* Do more magic */
@@ -42,15 +63,19 @@ int main(int argc, char *argv[]){
   char helloMsg[] = "Hello 1.0\n";
   char operation[20];
   char nickName[100];
-  int nbytes;
-  char remoteIP[INET6_ADDRSTRLEN];
-
+  char tempReadableIp[INET6_ADDRSTRLEN];
+  int tempPort;
 
   struct nameAndId
   {
     char nick[13];
-    int id;
+    int port;
+    char IP[INET6_ADDRSTRLEN];
   };
+
+  struct nameAndId nickHolder[100];
+
+  int counter;
 
   int yes = 1;
   int recivedValue;
@@ -134,8 +159,9 @@ int main(int argc, char *argv[]){
           FD_SET(acceptFd,&master);
           if(acceptFd>maxFds)
           {
-            acceptFd > maxFds;
+            maxFds = acceptFd;
           }
+
           #ifdef DEBUG
           printf("new Connection\n");
           #endif
@@ -192,6 +218,20 @@ int main(int argc, char *argv[]){
                 if(!reti)
                 {
                   //nick accepted send back ok
+                  inet_ntop(clientAddr.ss_family, get_in_addr((struct sockaddr *)&clientAddr),
+                  tempReadableIp, sizeof(tempReadableIp));
+
+                  tempPort = get_in_port((struct sockaddr *)&clientAddr);
+                  
+                  //inet_ntop(clientIn.ss_family, get_in_addr((struct sockaddr *)&clientIn),
+			            //readableIp2, sizeof(readableIp2));
+
+                  strcpy(nickHolder[counter].IP,tempReadableIp);
+                  
+                  strcpy(nickHolder[counter].nick,nickName);
+                  nickHolder[counter++].port = tempPort;
+
+
                   printf("Nick %s is accepted.\n",nickName);
                   memset(buf,0,sizeof(buf));
                   sprintf(buf,"OK %s\n",nickName);
@@ -202,6 +242,7 @@ int main(int argc, char *argv[]){
                   #ifdef DEBUG
                   printf("sent ok msg size: %d\n",sendValue);
                   #endif
+                  
                 } 
                 else 
                 {
@@ -242,6 +283,17 @@ int main(int argc, char *argv[]){
             //Echo sent msg to all connected servers!
             for(k = 0; k <= maxFds; k++)
             {
+              if(FD_ISSET(k,&master))
+              {
+                if(k!= listenSocket && k != i)
+                {
+                  if(sendValue = send(j,buf,strlen(buf),0) < 0)
+                  {
+                    printf("sendError to all\n");
+                    continue;
+                  }
+                }
+              }
               
             }
           }
