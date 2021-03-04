@@ -117,7 +117,7 @@ int main(int argc, char *argv[]){
 	}
   
   char buf[256];
-  char inputMsg[252];
+  char inputMsg[4100];
   memset(buf,0,sizeof(buf));
 
   // ta emot hello
@@ -161,12 +161,16 @@ int main(int argc, char *argv[]){
   {
     printf("ERROR RECIVED: %s",buf);
   }
-  
+
+  fd_set masterFds;
+  FD_ZERO(&readfds);
+  FD_ZERO(&masterFds);
+  FD_SET(STDIN_FILENO,&masterFds);
+  FD_SET(clientSocket, &masterFds);
   //loopStart
   while(1)
   {
-    FD_SET(STDIN,&readfds);
-    FD_SET(clientSocket, &readfds);
+    readfds = masterFds;
     memset(inputMsg,0,sizeof(inputMsg));
     memset(buf,0,sizeof(buf));
     recivedValue = select(clientSocket +1, &readfds,NULL,NULL,NULL);
@@ -183,22 +187,37 @@ int main(int argc, char *argv[]){
         perror("sendto:");
         exit(1);
       }
+      else if(recivedValue == 0)
+      {
+        close(clientSocket);
+        break;
+      }
       printf("Message recived: %s",buf);
     }
 
-    if(FD_ISSET(STDIN,&readfds))
+    if(FD_ISSET(STDIN_FILENO,&readfds))
     {
       
-      fgets(inputMsg,252,stdin);
-      
-      snprintf(buf,256,"MSG %s",inputMsg);
-      printf("BUF BEFORE SENDING: %s",buf);
-      if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
+      memset(inputMsg,0,sizeof(inputMsg));
+      printf("TEST\n");
+      fgets(inputMsg, 4096, stdin);
+      if(strlen(inputMsg) > 255)
       {
+        printf("to big message try again\n");
+      }
+      else
+      {
+        //skicka
+        sprintf(buf,"MSG %s",inputMsg);
+        printf("BUF BEFORE SENDING: %s\n",buf);
+        if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
+        {
         perror("sendto:");
         exit(1);
+        }
+        printf("sent: %d bytes\n",recivedValue);
       }
-      printf("sent: %d bytes\n",recivedValue);
+      FD_CLR(clientSocket,&readfds);
     }
   }
   return 0;

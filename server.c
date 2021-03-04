@@ -285,7 +285,7 @@ int main(int argc, char *argv[]){
           else if(strcmp(operation,"MSG") == 0)
           {
             //Echo sent msg to all connected servers!
-            sprintf(sendMSG,"MSG %s %s",nameArr[i],buf);
+            sprintf(sendMSG,"%s %s",nameArr[i],buf);
             for(k = 0; k <= maxFds; k++)
             {
               if(FD_ISSET(k,&master))
@@ -316,6 +316,6 @@ int main(int argc, char *argv[]){
       }
     }
   }
-  //close()
+  close(listenSocket);
   return(0);
 }
