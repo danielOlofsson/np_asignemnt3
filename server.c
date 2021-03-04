@@ -60,20 +60,19 @@ int main(int argc, char *argv[]){
   socklen_t addrLenght;
 
   char buf[256];
-  char helloMsg[] = "Hello 1.0\n";
+  char sendMSG[1000];
+  char helloMsg[30];
+  char wrongFormatMsg[] = "Wrong format. Send MSG or NICK first in msg\n";
   char operation[20];
   char nickName[100];
+  char nameArr[100][100];
   char tempReadableIp[INET6_ADDRSTRLEN];
   int tempPort;
+  
+  strcpy(helloMsg,"HELLO 1\n");
+  printf("Hello msg: %s\n", helloMsg);
 
-  struct nameAndId
-  {
-    char nick[13];
-    int port;
-    char IP[INET6_ADDRSTRLEN];
-  };
-
-  struct nameAndId nickHolder[100];
+  
 
   int counter;
 
@@ -88,11 +87,14 @@ int main(int argc, char *argv[]){
   hints.ai_flags = AI_PASSIVE;
   hints.ai_family = AF_UNSPEC;
   
+  
   if(recivedValue = getaddrinfo(hoststring,portstring,&hints,&servinfo) != 0)
   {
     printf("getaddrInfo error\n");
     exit(1);
   }
+  
+  free(org);
 
   for(p = servinfo; p != NULL; p->ai_next)
   {
@@ -101,6 +103,7 @@ int main(int argc, char *argv[]){
     {
       continue;
     }
+    setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &yes,sizeof(int));
     if(bind(listenSocket,p->ai_addr,p->ai_addrlen) < 0)
     {
       close(listenSocket);
@@ -108,7 +111,7 @@ int main(int argc, char *argv[]){
     }
     break;
   }
-  setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &yes,sizeof(int));
+  
 
   if(p == NULL)
   {
@@ -135,16 +138,16 @@ int main(int argc, char *argv[]){
   while (1)
   {
     read_fds = master;
-    if(select(maxFds +1,&read_fds,NULL,NULL,NULL) == -1)
+    if(select(maxFds+1,&read_fds,NULL,NULL,NULL) == -1)
     {
       printf("Select error\n");
-      continue;
+      exit(2);
     }
 
     
     for(i = 0; i <= maxFds; i++)
     {
-      if(FD_ISSET(i,&read_fds))
+      if(FD_ISSET(i,&read_fds))// Got connecion
       {
         if(i == listenSocket)
         {
@@ -156,85 +159,86 @@ int main(int argc, char *argv[]){
           }
           else
           {
-          FD_SET(acceptFd,&master);
-          if(acceptFd>maxFds)
-          {
-            maxFds = acceptFd;
-          }
+            FD_SET(acceptFd,&master);
+            if(acceptFd>maxFds)
+            {
+              maxFds = acceptFd;
+            }
 
-          #ifdef DEBUG
-          printf("new Connection\n");
-          #endif
-          if(sendValue = send(i,helloMsg,sizeof(helloMsg),0) < 0)
-          {
-            printf("Error sending hello msg\n");
-            continue;
+            #ifdef DEBUG
+            printf("new Connection\n");
+            #endif
+            if(sendValue = send(acceptFd,helloMsg,sizeof(helloMsg),0) < 0)
+            {
+              printf("Error sending hello msg\n");
+              //close(acceptFd);
+              break;
+            }
+            #ifdef DEBUG
+            printf("Hello msg sent\n");
+            #endif
           }
-          #ifdef DEBUG
-          printf("Hello msg sent\n");
-          #endif
-          }
-
+          continue;
         }
         else
         {
           //handle data from client
 
-          if(recivedValue = recv(i,buf,sizeof(buf),0) < 0)
+          if(recivedValue = recv(i,buf,sizeof(buf),0) <= 0)
           {
-            printf("recive error");
-            continue;
+            if(recivedValue == 0)
+            {
+              close(i);
+              FD_CLR(i,&master);
+              
+            }
+            else if(recivedValue == -1)
+            {
+              close(i);
+              FD_CLR(i,&master);
+            }        
           }
           //read operation + nickname from recived buf
           sscanf(buf,"%s %s",operation, nickName);
           #ifdef DEBUG
-          printf("operation = %s\n", operation);
+          //printf("operation = %s\n", operation);
           #endif
           if(strcmp(operation,"NICK") == 0)
           {
             //check NICK and sendback error or ok
-            printf("Inside Nick check. Nick = %s\n",nickName);
+            strcpy(nameArr[i],nickName);
+            printf("Inside Nick check. Nick = %s\n",nameArr[i]);
             char *expression="^[A-Za-z_]+$";
+            
             regex_t regularexpression;
             int reti;
+            printf("INNA REGcomp\n");
             
             reti=regcomp(&regularexpression, expression,REG_EXTENDED);
+            printf("Efter REGX\n");
             if(reti)
             {
               fprintf(stderr, "Could not compile regex.\n");
               exit(1);
             }
             
-            int matches;
+            int matches = 0;
             regmatch_t items;
-
-        
   
-            for(j=2;j<strlen(nickName);j++)
-            {
+            
               if(strlen(nickName)<12)
               {
+                printf("INNA REGX\n");
                 reti=regexec(&regularexpression, nickName,matches,&items,0);
+                printf("EFTER REGX\n");
                 if(!reti)
                 {
                   //nick accepted send back ok
-                  inet_ntop(clientAddr.ss_family, get_in_addr((struct sockaddr *)&clientAddr),
-                  tempReadableIp, sizeof(tempReadableIp));
-
-                  tempPort = get_in_port((struct sockaddr *)&clientAddr);
-                  
-                  //inet_ntop(clientIn.ss_family, get_in_addr((struct sockaddr *)&clientIn),
-			            //readableIp2, sizeof(readableIp2));
-
-                  strcpy(nickHolder[counter].IP,tempReadableIp);
-                  
-                  strcpy(nickHolder[counter].nick,nickName);
-                  nickHolder[counter++].port = tempPort;
-
 
                   printf("Nick %s is accepted.\n",nickName);
                   memset(buf,0,sizeof(buf));
-                  sprintf(buf,"OK %s\n",nickName);
+                  strcpy(buf,"OK\n");
+
                   if(sendValue = send(i,buf,strlen(buf),0) < 0)
                   {
                     printf("Error sending ok for nickname\n");
@@ -242,7 +246,7 @@ int main(int argc, char *argv[]){
                   #ifdef DEBUG
                   printf("sent ok msg size: %d\n",sendValue);
                   #endif
-                  
+
                 } 
                 else 
                 {
@@ -273,41 +277,45 @@ int main(int argc, char *argv[]){
                 printf("sent to long nick: %d\n",sendValue);
                 #endif
               }
-            }            
+
             regfree(&regularexpression);
-            free(org);
+         
             memset(buf,0,sizeof(buf)); 
           }
           else if(strcmp(operation,"MSG") == 0)
           {
             //Echo sent msg to all connected servers!
+            sprintf(sendMSG,"MSG %s %s",nameArr[i],buf);
             for(k = 0; k <= maxFds; k++)
             {
               if(FD_ISSET(k,&master))
               {
                 if(k!= listenSocket && k != i)
                 {
-                  if(sendValue = send(j,buf,strlen(buf),0) < 0)
+                  if(sendValue = send(k,sendMSG,strlen(sendMSG),0) < 0)
                   {
                     printf("sendError to all\n");
                     continue;
-                  }
+                  }                  
                 }
-              }
-              
+              }           
             }
+            memset(sendMSG,0,sizeof(sendMSG));
           }
-          else
+         /* else
           {
-            //rubbish recived do somthing? 
-          }
-        
-
+            if(sendValue = send(i,wrongFormatMsg,strlen(wrongFormatMsg),0) < 0)
+            {
+              printf("sendError to all\n");
+              continue;
+            }
+          }*/
+          memset(operation,0,strlen(operation));
+          memset(buf,0,sizeof(buf));
         }
       }
     }
   }
-  
-  
+  //close()
   return(0);
 }
