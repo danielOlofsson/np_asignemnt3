@@ -10,26 +10,13 @@
 #include <regex.h>
 #include <arpa/inet.h>
 
-
-
-void *get_in_addr(struct sockaddr *sa)
+struct nameTracker
 {
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
-    }
+  char nameArr[100];
+  int index;
+};
 
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
-int get_in_port(struct sockaddr *sa)
-{
-    if (sa->sa_family == AF_INET) {
-        return ((struct sockaddr_in*)sa)->sin_port;
-    }
-
-    return ((struct sockaddr_in6*)sa)->sin6_port;
-}
-
+struct nameTracker names[100];
 int main(int argc, char *argv[]){
   
   /* Do more magic */
@@ -39,7 +26,7 @@ int main(int argc, char *argv[]){
     printf("To few arguments!\n");
     exit(1);
   }
-
+  
   char *hoststring,*portstring, *rest, *org;
   org=strdup(argv[1]);
   rest=argv[1];
@@ -55,7 +42,7 @@ int main(int argc, char *argv[]){
   int i, j, k;
   int listenSocket;
   int acceptFd;
-
+  int nrOfNames = 0;
   struct sockaddr_storage clientAddr;
   socklen_t addrLenght;
 
@@ -65,7 +52,7 @@ int main(int argc, char *argv[]){
   char wrongFormatMsg[] = "Wrong format. Send MSG or NICK first in msg\n";
   char operation[20];
   char nickName[100];
-  char nameArr[100][100];
+  
   char tempReadableIp[INET6_ADDRSTRLEN];
   int tempPort;
   
@@ -167,7 +154,7 @@ int main(int argc, char *argv[]){
             #ifdef DEBUG
             printf("new Connection\n");
             #endif
-            if(sendValue = send(acceptFd,helloMsg,sizeof(helloMsg),0) < 0)
+            if(sendValue = send(acceptFd,helloMsg,strlen(helloMsg),0) < 0)
             {
               printf("Error sending hello msg\n");
               //close(acceptFd);
@@ -187,15 +174,17 @@ int main(int argc, char *argv[]){
           {
             if(recivedValue == 0)
             {
-              close(i);
-              FD_CLR(i,&master);
+              printf("recived 0\n");
               
+             
             }
             else if(recivedValue == -1)
             {
-              close(i);
-              FD_CLR(i,&master);
-            }        
+              printf("recv error\n");
+              
+            }
+            close(i);
+            FD_CLR(i,&master);     
           }
           //read operation + nickname from recived buf
           sscanf(buf,"%s %s",operation, nickName);
@@ -205,7 +194,7 @@ int main(int argc, char *argv[]){
           if(strcmp(operation,"NICK") == 0)
           {
             //check NICK and sendback error or ok
-            strcpy(nameArr[i],nickName);
+            
             #ifdef DEBUG            
             printf("Inside Nick check. Nick = %s\n",nameArr[i]);
             #endif
@@ -228,13 +217,15 @@ int main(int argc, char *argv[]){
   
             
               if(strlen(nickName)<12)
-              {
-                
+              {                
                 reti=regexec(&regularexpression, nickName,matches,&items,0);
                 
                 if(!reti)
                 {
                   //nick accepted send back ok
+                  memset(names[nrOfNames].nameArr, 0, sizeof(names[nrOfNames].nameArr));
+                  names[nrOfNames].index = i;
+                  strcpy(names[nrOfNames++].nameArr,nickName);
 
                   printf("Nick %s is accepted.\n",nickName);
                   memset(buf,0,sizeof(buf));
@@ -254,7 +245,7 @@ int main(int argc, char *argv[]){
                   //nick rejected send back ERR <txt>
                   printf("%s is not accepted.\n",nickName);
                   memset(buf,0,sizeof(buf));
-                  sprintf(buf,"ERR %s\n",nickName);
+                  sprintf(buf,"ERROR %s\n",nickName);
                   if(sendValue = send(i,buf,strlen(buf),0) < 0)
                   {
                     printf("Error sending ERR msg for nickname\n");
@@ -269,7 +260,7 @@ int main(int argc, char *argv[]){
                 //nickname to long send back ERR <txt>
                 printf("%s is too long (%ld vs 12 chars).\n", nickName, strlen(nickName));
                 memset(buf,0,sizeof(buf));
-                strcpy(buf,"ERR to long nickname\n");
+                strcpy(buf,"ERROR to long nickname\n");
                 if(sendValue = send(i,buf,strlen(buf),0) < 0)
                 {
                   printf("Error sending ERR for to long nickname\n");
@@ -285,7 +276,16 @@ int main(int argc, char *argv[]){
           else if(strcmp(operation,"MSG") == 0)
           {
             //Echo sent msg to all connected servers!
-            sprintf(sendMSG,"%s %s",nameArr[i],buf);
+            char *temp = strchr(buf,' ');
+            char tempName[20];
+            for(int l = 0; l < nrOfNames; l++)
+            {
+              if(names[l].index == i)
+              {
+                strcpy(tempName,names[l].nameArr);
+              }
+            }
+            sprintf(sendMSG,"MSG %s %s",tempName,temp);
             for(k = 0; k <= maxFds; k++)
             {
               if(FD_ISSET(k,&master))
@@ -302,14 +302,6 @@ int main(int argc, char *argv[]){
             }
             memset(sendMSG,0,sizeof(sendMSG));
           }
-         /* else
-          {
-            if(sendValue = send(i,wrongFormatMsg,strlen(wrongFormatMsg),0) < 0)
-            {
-              printf("sendError to all\n");
-              continue;
-            }
-          }*/
           memset(operation,0,strlen(operation));
           memset(buf,0,sizeof(buf));
         }

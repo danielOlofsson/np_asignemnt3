@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
   rest=argv[1];
   hoststring=strtok_r(rest,":",&rest);
   portstring=strtok_r(rest,":",&rest);
-  printf("Got %s split into %s and %s \n",org, hoststring,portstring);
+  
 
 
   /* This is to test nicknames */
@@ -44,7 +44,6 @@ int main(int argc, char *argv[]){
   int matches;
   regmatch_t items;
   
-  printf("Testing nicknames. \n");
   
   for(int i=2;i<argc;i++)
   {
@@ -118,6 +117,7 @@ int main(int argc, char *argv[]){
   
   char buf[256];
   char inputMsg[4100];
+  char printMsg[400];
   memset(buf,0,sizeof(buf));
 
   // ta emot hello
@@ -133,7 +133,6 @@ int main(int argc, char *argv[]){
     close(clientSocket);
   }
 
-  printf("When reciving hello: %s", buf);
   memset(buf,0,sizeof(buf));
   
   sprintf(buf,"NICK %s\n",nickName);
@@ -143,7 +142,7 @@ int main(int argc, char *argv[]){
     perror("sendto:");
     exit(1);
   }
-  printf("client sent %d bytes",recivedValue);
+  
   memset(buf,0,sizeof(buf));
   //ta emot error eller ok
   if((recivedValue = recv(clientSocket,buf,sizeof(buf),0)) == -1)
@@ -151,7 +150,7 @@ int main(int argc, char *argv[]){
     perror("sendto:");
     exit(1);
   }
-  printf("When reciving ok or error: %s", buf);
+  
 
   if(strcmp(buf, "OK\n") == 0)
   {
@@ -192,7 +191,19 @@ int main(int argc, char *argv[]){
         close(clientSocket);
         break;
       }
-      printf("Message recived: %s",buf);
+      char MSG[5];
+      memset(MSG,0,sizeof(MSG));
+      char *temp = strchr(buf,' ');
+      char tempName[20];
+      sscanf(buf,"%s %s",MSG, tempName);
+      memset(printMsg,0,sizeof(printMsg));
+      sprintf(printMsg,"%s",temp);
+      for(int j = 0; j < strlen(printMsg) ; j++)
+      {
+        printMsg[j] = printMsg[j+1];
+      }
+      printf("%s",printMsg);
+      fflush(stdout);
     }
 
     if(FD_ISSET(STDIN_FILENO,&readfds))
@@ -209,14 +220,14 @@ int main(int argc, char *argv[]){
         //skicka
         sprintf(buf,"MSG %s",inputMsg);
         #ifdef DEBUG
-        printf("BUF BEFORE SENDING: %s",buf);
+        
         #endif
         if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
         {
         perror("sendto:");
         exit(1);
         }
-        printf("sent: %d bytes\n",recivedValue);
+        
       }
       FD_CLR(clientSocket,&readfds);
     }
