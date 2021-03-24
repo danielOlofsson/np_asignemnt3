@@ -82,7 +82,7 @@ int main(int argc, char *argv[]){
   
   free(org);
 
-  for(p = servinfo; p != NULL; p->ai_next)
+  for(p = servinfo; p != NULL; p = p->ai_next)
   {
     listenSocket = socket(p->ai_family,p->ai_socktype,p->ai_protocol);
     if(listenSocket < 0)
@@ -124,6 +124,7 @@ int main(int argc, char *argv[]){
   while (1)
   {
     read_fds = master;
+    
     if(select(maxFds+1,&read_fds,NULL,NULL,NULL) == -1)
     {
       printf("Select error\n");
@@ -169,19 +170,16 @@ int main(int argc, char *argv[]){
         else
         {
           //handle data from client
-
+          memset(buf,0,sizeof(buf));
           if(recivedValue = recv(i,buf,sizeof(buf),0) <= 0)
           {
             if(recivedValue == 0)
             {
-              printf("recived 0\n");
-              
-             
+              printf("recived 0\n");                           
             }
             else if(recivedValue == -1)
             {
-              printf("recv error\n");
-              
+              printf("recv error\n");              
             }
             close(i);
             FD_CLR(i,&master);     
@@ -265,6 +263,9 @@ int main(int argc, char *argv[]){
                 {
                   printf("Error sending ERR for to long nickname\n");
                 }
+                FD_CLR(i,&master);
+                close(i);
+
                 #ifdef DEBUG
                 printf("sent to long nick: %d\n",sendValue);
                 #endif
@@ -278,6 +279,7 @@ int main(int argc, char *argv[]){
             //Echo sent msg to all connected servers!
             char *temp = strchr(buf,' ');
             char tempName[20];
+            
             for(int l = 0; l < nrOfNames; l++)
             {
               if(names[l].index == i)
@@ -285,7 +287,7 @@ int main(int argc, char *argv[]){
                 strcpy(tempName,names[l].nameArr);
               }
             }
-            sprintf(sendMSG,"MSG %s %s",tempName,temp);
+            sprintf(sendMSG,"MSG %s%s",tempName,temp);
             for(k = 0; k <= maxFds; k++)
             {
               if(FD_ISSET(k,&master))
@@ -301,6 +303,14 @@ int main(int argc, char *argv[]){
               }           
             }
             memset(sendMSG,0,sizeof(sendMSG));
+          }
+          else
+          {
+            if(sendValue = send(i,"ERROR\n",strlen("ERROR\n"),0) < 0)
+            {
+              printf("sendError to all\n");
+              continue;
+            }   
           }
           memset(operation,0,strlen(operation));
           memset(buf,0,sizeof(buf));
