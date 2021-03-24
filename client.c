@@ -59,7 +59,7 @@ int main(int argc, char *argv[]){
       else 
       {
         
-        printf("%s is not accepted. Exiting\n",argv[i]);
+        printf("%s is not accepted.\n Exiting\n",argv[i]);
         exit(1);
         
       }
@@ -67,9 +67,8 @@ int main(int argc, char *argv[]){
     else 
     {
       
-      printf("%s is too long (%ld vs 12 chars).Exiting\n", argv[i], strlen(argv[i]));
+      printf("%s is too long (%ld vs 12 chars).\nExiting\n", argv[i], strlen(argv[i]));
       exit(1);
-     
     }
   }
   //printf("Leaving\n");
@@ -159,6 +158,7 @@ int main(int argc, char *argv[]){
   else
   {
     printf("ERROR RECIVED: %s",buf);
+    exit(4);
   }
 
   fd_set masterFds;
@@ -188,6 +188,7 @@ int main(int argc, char *argv[]){
       }
       else if(recivedValue == 0)
       {
+
         close(clientSocket);
         break;
       }
@@ -198,12 +199,16 @@ int main(int argc, char *argv[]){
       sscanf(buf,"%s %s",MSG, tempName);
       memset(printMsg,0,sizeof(printMsg));
       sprintf(printMsg,"%s",temp);
+      
       for(int j = 0; j < strlen(printMsg) ; j++)
       {
         printMsg[j] = printMsg[j+1];
       }
-      printf("%s",printMsg);
-      fflush(stdout);
+      if(strcmp(tempName,nickName) != 0)
+      {
+        printf("%s",printMsg);
+        fflush(stdout);
+      }
     }
 
     if(FD_ISSET(STDIN_FILENO,&readfds))
@@ -218,14 +223,16 @@ int main(int argc, char *argv[]){
       else
       {
         //skicka
-        sprintf(buf,"MSG %s",inputMsg);
-        #ifdef DEBUG
-        
-        #endif
-        if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
-        {
-        perror("sendto:");
-        exit(1);
+        recivedValue = snprintf(buf,256,"MSG %s",inputMsg);
+        if(recivedValue > 0)
+        {                      
+          #ifdef DEBUG        
+          #endif
+          if ((recivedValue = send(clientSocket, buf, strlen(buf), 0)) == -1) 
+          {
+            perror("sendto:");
+            exit(1);
+          }
         }
         
       }

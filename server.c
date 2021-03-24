@@ -179,141 +179,156 @@ int main(int argc, char *argv[]){
             }
             else if(recivedValue == -1)
             {
-              printf("recv error\n");              
+              printf("recv error\n");             
             }
+
+            for(int k = 0; k < nrOfNames; k++)
+            {
+              if(names[k].index == i)
+              {
+                printf("removed socket\n");
+                names[k] = names[nrOfNames];
+              }
+            }
+            nrOfNames--;
             close(i);
-            FD_CLR(i,&master);     
-          }
-          //read operation + nickname from recived buf
-          sscanf(buf,"%s %s",operation, nickName);
-          #ifdef DEBUG
-          //printf("operation = %s\n", operation);
-          #endif
-          if(strcmp(operation,"NICK") == 0)
-          {
-            //check NICK and sendback error or ok
-            
-            #ifdef DEBUG            
-            printf("Inside Nick check. Nick = %s\n",nameArr[i]);
-            #endif
-            char *expression="^[A-Za-z_]+$";
-            
-            regex_t regularexpression;
-            int reti;
-            
-            
-            reti=regcomp(&regularexpression, expression,REG_EXTENDED);
-            
-            if(reti)
-            {
-              fprintf(stderr, "Could not compile regex.\n");
-              exit(1);
-            }
-            
-            int matches = 0;
-            regmatch_t items;
-  
-            
-              if(strlen(nickName)<12)
-              {                
-                reti=regexec(&regularexpression, nickName,matches,&items,0);
-                
-                if(!reti)
-                {
-                  //nick accepted send back ok
-                  memset(names[nrOfNames].nameArr, 0, sizeof(names[nrOfNames].nameArr));
-                  names[nrOfNames].index = i;
-                  strcpy(names[nrOfNames++].nameArr,nickName);
-
-                  printf("Nick %s is accepted.\n",nickName);
-                  memset(buf,0,sizeof(buf));
-                  strcpy(buf,"OK\n");
-
-                  if(sendValue = send(i,buf,strlen(buf),0) < 0)
-                  {
-                    printf("Error sending ok for nickname\n");
-                  }
-                  #ifdef DEBUG
-                  //printf("sent ok msg size: %d\n",sendValue);
-                  #endif
-
-                } 
-                else 
-                {
-                  //nick rejected send back ERR <txt>
-                  printf("%s is not accepted.\n",nickName);
-                  memset(buf,0,sizeof(buf));
-                  sprintf(buf,"ERROR %s\n",nickName);
-                  if(sendValue = send(i,buf,strlen(buf),0) < 0)
-                  {
-                    printf("Error sending ERR msg for nickname\n");
-                  }
-                  #ifdef DEBUG
-                  printf("sent ERRmsg bad chars size: %d\n",sendValue);
-                  #endif
-                }
-              } 
-              else 
-              {
-                //nickname to long send back ERR <txt>
-                printf("%s is too long (%ld vs 12 chars).\n", nickName, strlen(nickName));
-                memset(buf,0,sizeof(buf));
-                strcpy(buf,"ERROR to long nickname\n");
-                if(sendValue = send(i,buf,strlen(buf),0) < 0)
-                {
-                  printf("Error sending ERR for to long nickname\n");
-                }
-                FD_CLR(i,&master);
-                close(i);
-
-                #ifdef DEBUG
-                printf("sent to long nick: %d\n",sendValue);
-                #endif
-              }
-            regfree(&regularexpression);
-         
-            memset(buf,0,sizeof(buf)); 
-          }
-          else if(strcmp(operation,"MSG") == 0)
-          {
-            //Echo sent msg to all connected servers!
-            char *temp = strchr(buf,' ');
-            char tempName[20];
-            
-            for(int l = 0; l < nrOfNames; l++)
-            {
-              if(names[l].index == i)
-              {
-                strcpy(tempName,names[l].nameArr);
-              }
-            }
-            sprintf(sendMSG,"MSG %s%s",tempName,temp);
-            for(k = 0; k <= maxFds; k++)
-            {
-              if(FD_ISSET(k,&master))
-              {
-                if(k!= listenSocket && k != i)
-                {
-                  if(sendValue = send(k,sendMSG,strlen(sendMSG),0) < 0)
-                  {
-                    printf("sendError to all\n");
-                    continue;
-                  }                  
-                }
-              }           
-            }
-            memset(sendMSG,0,sizeof(sendMSG));
+            FD_CLR(i,&master);                        
           }
           else
           {
-            if(sendValue = send(i,"ERROR\n",strlen("ERROR\n"),0) < 0)
+            //read operation + nickname from recived buf
+            memset(operation,0,sizeof(operation));
+            memset(nickName,0,sizeof(nickName));
+
+            sscanf(buf,"%s %s",operation, nickName);
+            #ifdef DEBUG
+            //printf("operation = %s\n", operation);
+            #endif
+            if(strcmp(operation,"NICK") == 0)
             {
-              printf("sendError to all\n");
-              continue;
-            }   
+              //check NICK and sendback error or ok
+              
+              #ifdef DEBUG            
+              printf("Inside Nick check. Nick = %s\n",nameArr[i]);
+              #endif
+              char *expression="^[A-Za-z_]+$";
+              
+              regex_t regularexpression;
+              int reti;
+              
+              
+              reti=regcomp(&regularexpression, expression,REG_EXTENDED);
+              
+              if(reti)
+              {
+                fprintf(stderr, "Could not compile regex.\n");
+                exit(1);
+              }
+              
+              int matches = 0;
+              regmatch_t items;
+    
+              
+                if(strlen(nickName)<12)
+                {                
+                  reti=regexec(&regularexpression, nickName,matches,&items,0);
+                  
+                  if(!reti)
+                  {
+                    //nick accepted send back ok
+                    memset(names[nrOfNames].nameArr, 0, sizeof(names[nrOfNames].nameArr));
+                    names[nrOfNames].index = i;
+                    strcpy(names[nrOfNames++].nameArr,nickName);
+
+                    printf("Nick %s is accepted.\n",nickName);
+                    memset(buf,0,sizeof(buf));
+                    strcpy(buf,"OK\n");
+
+                    if(sendValue = send(i,buf,strlen(buf),0) < 0)
+                    {
+                      printf("Error sending ok for nickname\n");
+                    }
+                    #ifdef DEBUG
+                    //printf("sent ok msg size: %d\n",sendValue);
+                    #endif
+                  } 
+                  else 
+                  {
+                    //nick rejected send back ERR <txt>
+                    printf("%s is not accepted.\n",nickName);
+                    memset(buf,0,sizeof(buf));
+                    sprintf(buf,"ERROR %s\n",nickName);                  
+                    if(sendValue = send(i,buf,strlen(buf),0) < 0)
+                    {
+                      printf("Error sending ERR msg for nickname\n");
+                    }
+                    #ifdef DEBUG
+                    printf("sent ERRmsg bad chars size: %d\n",sendValue);
+                    #endif
+                  }
+                } 
+                else 
+                {
+                  //nickname to long send back ERR <txt>
+                  printf("%s is too long (%ld vs 12 chars).\n", nickName, strlen(nickName));
+                  memset(buf,0,sizeof(buf));
+                  strcpy(buf,"ERROR to long nickname\n");
+                  if(sendValue = send(i,buf,strlen(buf),0) < 0)
+                  {
+                    printf("Error sending ERR for to long nickname\n");
+                  }
+                  FD_CLR(i,&master);
+                  close(i);
+
+                  #ifdef DEBUG
+                  printf("sent to long nick: %d\n",sendValue);
+                  #endif
+                }
+              regfree(&regularexpression);
+          
+              memset(buf,0,sizeof(buf)); 
+            }
+            else if(strcmp(operation,"MSG") == 0)
+            {
+              
+              char *temp = strchr(buf,' ');
+              char tempName[20];
+              memset(tempName,0,sizeof(tempName));
+              for(int l = 0; l < nrOfNames; l++)
+              {
+                if(names[l].index == i)
+                {
+                  strcpy(tempName,names[l].nameArr);
+                }
+              }
+              sprintf(sendMSG,"MSG %s%s",tempName,temp);
+              for(int k = 0; k < nrOfNames; k++)
+              {
+                //if(FD_ISSET(k,&master))
+                //{                
+                  //if(k!= listenSocket)
+                  //{
+                  if(sendValue = send(names[k].index,sendMSG,strlen(sendMSG),0) < 0)
+                  {
+                    printf("blahahaha to all\n");
+                    continue;
+                  }                  
+                  //}
+                //}           
+              }
+              memset(sendMSG,0,sizeof(sendMSG));
+            }
+            else if(strcmp(operation,"") != 0)
+            {
+              if(sendValue = send(i,"ERROR\n",strlen("ERROR\n"),0) < 0)
+              {
+                printf("sendError to all\n");
+                continue;
+              }   
+            }
+            memset(operation,0,strlen(operation));
+            memset(buf,0,sizeof(buf));
           }
-          memset(operation,0,strlen(operation));
-          memset(buf,0,sizeof(buf));
         }
       }
     }
